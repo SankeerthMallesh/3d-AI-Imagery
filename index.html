@@ -193,20 +193,50 @@ function fillApp(){if(!sel)return;$('#col').value='#'+sel.userData.std.color.get
 /* Smart Procedural AI Generator Engine */
 function clearAll(){meshes.slice().forEach(m=>{scene.remove(m);if(m.geometry)m.geometry.dispose()});meshes=[];sel=null;box.visible=false}
 
-function buildTree(){
+function buildDetailedChristmasTree(){
   clearAll();bulk=true;
-  const trunk=addMesh(weld(new THREE.CylinderGeometry(5,7,24,16)),"Trunk",new THREE.Vector3(0,12,0),0x5c4033);
-  const t1=addMesh(weld(new THREE.ConeGeometry(32,32,16)),"Foliage Tier 1",new THREE.Vector3(0,36,0),0x0f5257);
-  const t2=addMesh(weld(new THREE.ConeGeometry(25,28,16)),"Foliage Tier 2",new THREE.Vector3(0,54,0),0x0b6623);
-  const t3=addMesh(weld(new THREE.ConeGeometry(18,22,16)),"Foliage Tier 3",new THREE.Vector3(0,70,0),0x299617);
-  const star=addMesh(weld(new THREE.DodecahedronGeometry(5,0)),"Star",new THREE.Vector3(0,84,0),0xffd700);
   
-  const colors=[0xff0000,0x00e5ff,0xffd700,0xff007f,0xffffff];
-  for(let i=0;i<18;i++){
-    const h=28+Math.random()*40,r=(1-(h-24)/60)*24,ang=(i/18)*Math.PI*2;
-    addMesh(weld(new THREE.SphereGeometry(2.5,10,10)),`Ornament ${i+1}`,new THREE.Vector3(Math.cos(ang)*r,h,Math.sin(ang)*r),colors[i%colors.length]);
+  // 1. Trunk
+  const trunkGeo = weld(new THREE.CylinderGeometry(5,5,20,16));
+  const trunk = addMesh(trunkGeo, "Tree Trunk", new THREE.Vector3(0, 10, 0), 0x5c4033);
+
+  // 2. Multi-tier Foliage Segments
+  const foliageTiers = [
+    { radius: 25, height: 25, yPos: 28, color: 0x0f5257, name: "Foliage Tier 1" },
+    { radius: 20, height: 22, yPos: 42, color: 0x0b6623, name: "Foliage Tier 2" },
+    { radius: 15, height: 18, yPos: 54, color: 0x299617, name: "Foliage Tier 3" },
+    { radius: 10, height: 14, yPos: 64, color: 0x3bb143, name: "Foliage Tier 4" }
+  ];
+
+  foliageTiers.forEach(tier => {
+    const coneGeo = weld(new THREE.ConeGeometry(tier.radius, tier.height, 16));
+    addMesh(coneGeo, tier.name, new THREE.Vector3(0, tier.yPos, 0), tier.color);
+  });
+
+  // 3. Gold Star Apex
+  const starGeo = weld(new THREE.DodecahedronGeometry(4, 0));
+  addMesh(starGeo, "Star Topper", new THREE.Vector3(0, 74, 0), 0xffd700);
+
+  // 4. Spiral Ornaments/Baubles
+  const ornamentColors = [0xff0000, 0x00e5ff, 0xffff00, 0xff007f];
+  const totalOrnaments = 16;
+  for (let i = 0; i < totalOrnaments; i++) {
+    const progress = i / totalOrnaments;
+    const yVal = 20 + progress * 45;
+    const radiusAtHeight = (1 - (yVal - 18) / 52) * 22;
+    const angle = i * 2.4;
+
+    const xVal = Math.cos(angle) * radiusAtHeight;
+    const zVal = Math.sin(angle) * radiusAtHeight;
+
+    const orbGeo = weld(new THREE.SphereGeometry(2, 10, 10));
+    addMesh(orbGeo, `Ornament ${i + 1}`, new THREE.Vector3(xVal, yVal, zVal), ornamentColors[i % ornamentColors.length]);
   }
-  bulk=false;setSel(trunk);refresh();log("Built Christmas Tree");
+
+  bulk = false;
+  setSel(trunk);
+  refresh();
+  log("Built Detailed Multi-Tier Christmas Tree");
 }
 
 function buildSnowman(){
@@ -232,7 +262,7 @@ function buildHouse(){
 
 function processAIChat(prompt){
   const p=prompt.toLowerCase();
-  if(p.includes('tree')||p.includes('christmas')) buildTree();
+  if(p.includes('tree')||p.includes('christmas')) buildDetailedChristmasTree();
   else if(p.includes('snowman')) buildSnowman();
   else if(p.includes('house')||p.includes('building')) buildHouse();
   else {
