@@ -35,22 +35,22 @@ footer{grid-column:1/-1;background:var(--bg);border-top:1px solid var(--bd);disp
 <button class="b" id="dup">Duplicate</button><button class="b" id="del">Delete</button><button class="b" id="undo">Undo sculpt</button>
 <button class="b p" id="stl">Export STL</button></header>
 <div id="L">
-<h4>Tools</h4><div class="g" id="tools"></div><p style="color:var(--mu);font-size:10px;margin-top:6px">Select: drag an object to move it (drops onto others); drag the colored dots to resize.</p>
+<h4>Tools</h4><div class="g" id="tools"></div><p style="color:var(--mu);font-size:10px;margin-top:6px">Select: drag object to move; colored dots resize.</p>
 <h4>Sculpt</h4><div class="g" id="brushes"></div>
 <label>Radius <span id="rv">15</span> mm</label><input type="range" id="br" min="2" max="60" value="15">
 <label>Strength</label><input type="range" id="bs" min="1" max="100" value="40">
 <label>Falloff</label><select id="bf"><option>smooth</option><option>linear</option><option>spherical</option><option>sharp</option></select>
-<p style="color:var(--mu);font-size:10px;margin-top:6px">Sculpt: left-drag paints, right-drag orbits. Shift inverts.</p>
-<h4>Orientation</h4><div class="g"><button class="b" id="stand">⬆ Stand up</button><button class="b" id="lay">⬌ Lay flat</button><button class="b" data-r="x">↻ X 90°</button><button class="b" data-r="y">↻ Y 90°</button><button class="b" data-r="z">↻ Z 90°</button><button class="b" id="drop">⤓ Drop</button></div><label><input type="checkbox" id="snap"> Snap to 5 mm</label><h4>Add primitive</h4>
+<p style="color:var(--mu);font-size:10px;margin-top:6px">Sculpt: left-drag paints, right-drag orbits.</p>
+<h4>Orientation</h4><div class="g"><button class="b" id="stand">⬆ Stand up</button><button class="b" id="lay">⬌ Lay flat</button><button class="b" data-r="x">↻ X 90°</button><button class="b" data-r="y">↻ Y 90°</button><button class="b" data-r="z">↻ Z 90°</button><button class="b" id="drop">⤓ Drop</button></div><label><input type="checkbox" id="snap"> Snap 5 mm</label><h4>Add primitive</h4>
 <label>Size (mm)</label><input type="number" id="psz" value="40"><label>Segments</label><input type="number" id="psg" value="48" min="8" max="128">
 <div class="g" style="margin-top:6px" id="prims"></div>
 </div>
 <div id="vp"><canvas id="cv"></canvas><div id="hud"></div><div id="toast"></div><div id="lb"></div>
 <div id="chat"><div id="ch"><span>✨ AI Builder</span><span>–</span></div><div id="cl"></div><div id="chips"></div>
 <div id="cf">
-  <button class="b" id="chatImgBtn" title="Upload image to chat & diagram">🖼️</button>
+  <button class="b" id="chatImgBtn" title="Upload image">🖼️</button>
   <input type="file" id="chatImgInput" accept="image/*" hidden>
-  <input id="ci" placeholder="Describe or upload image..." autocomplete="off">
+  <input id="ci" placeholder="Describe what to build..." autocomplete="off">
   <button class="b p" id="cs">Send</button>
 </div>
 </div></div>
@@ -64,8 +64,8 @@ footer{grid-column:1/-1;background:var(--bg);border-top:1px solid var(--bd);disp
 <h4>Outliner</h4><div class="ol" id="ol"></div>
 <h4>Analysis</h4><div id="an"></div>
 <label>Filament</label><select id="fil"><option value="1.24">PLA 1.24</option><option value="1.04">ABS 1.04</option><option value="1.27">PETG 1.27</option><option value="1.21">TPU 1.21</option><option value="1.1">Resin 1.10</option></select>
-<label>Infill % (weight estimate)</label><input type="number" id="inf" value="20" min="1" max="100">
-<label>Overhang critical angle <span id="av">45</span>°</label><input type="range" id="ang" min="20" max="80" value="45">
+<label>Infill %</label><input type="number" id="inf" value="20" min="1" max="100">
+<label>Overhang angle <span id="av">45</span>°</label><input type="range" id="ang" min="20" max="80" value="45">
 <h4>Repair</h4><div class="g"><button class="b" id="fill">Fill holes</button><button class="b" id="defects">Show defects</button></div>
 <h4>Slicer</h4><label><input type="checkbox" id="sl"> Cross-section</label><input type="range" id="sh" min="0" max="100" value="100"><div class="row"><span>Layer @0.2mm</span><b id="ly">-</b></div>
 </div>
@@ -89,7 +89,7 @@ const ov=new THREE.ShaderMaterial({uniforms:ovU,side:THREE.DoubleSide,
 vertexShader:'varying vec3 vN,vW;void main(){vN=normalize(mat3(modelMatrix)*normal);vec4 w=modelMatrix*vec4(position,1.);vW=w.xyz;gl_Position=projectionMatrix*viewMatrix*w;}',
 fragmentShader:'uniform float uCrit,uClip;varying vec3 vN,vW;void main(){if(vW.y>uClip)discard;vec3 n=normalize(vN);if(!gl_FrontFacing)n=-n;float a=degrees(asin(clamp(dot(n,vec3(0.,-1.,0.)),-1.,1.)));vec3 c=a<uCrit?vec3(.2,.8,.35):(a<uCrit+15.?vec3(.95,.8,.15):vec3(.9,.15,.15));c*=.55+.45*dot(n,normalize(vec3(.4,.8,.5)));gl_FragColor=vec4(c,1.);}'});
 const cutPl=new THREE.Mesh(new THREE.PlaneGeometry(220,220).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x00e5ff,transparent:true,opacity:.12,side:THREE.DoubleSide,depthWrite:false}));cutPl.visible=false;scene.add(cutPl);
-let mode='solid',tool='select',sel=null,meshes=[],cnt=0,showDef=false,undo=[];
+let mode='solid',tool='select',sel=null,meshes=[],cnt=0,showDef=false,undo=[],bulk=false;
 const tc=new THREE.TransformControls(cam,cv);scene.add(tc);
 tc.addEventListener('dragging-changed',e=>orbit.enabled=!e.value);tc.addEventListener('objectChange',()=>{fillTf();});
 tc.addEventListener('mouseUp',()=>refresh());
@@ -101,10 +101,12 @@ const o=new THREE.BufferGeometry();o.setAttribute('position',new THREE.BufferAtt
 function buildAdj(m){const n=m.geometry.attributes.position.count,a=Array.from({length:n},()=>new Set()),ix=m.geometry.index.array;
 for(let i=0;i<ix.length;i+=3){const A=ix[i],B=ix[i+1],C=ix[i+2];a[A].add(B).add(C);a[B].add(A).add(C);a[C].add(A).add(B)}m.userData.adj=a.map(s=>[...s])}
 const P={Cube:s=>new THREE.BoxGeometry(s,s,s,8,8,8),Cylinder:(s,g)=>new THREE.CylinderGeometry(s/2,s/2,s,g,12),Sphere:(s,g)=>new THREE.SphereGeometry(s/2,g,g/2),Cone:(s,g)=>new THREE.CylinderGeometry(0,s/2,s,g,12),Torus:(s,g)=>new THREE.TorusGeometry(s/2,s/6,g/2,g)};
-function addMesh(geo,name,pos){geo.computeBoundingBox();const st=mkStd(0xc8cad6),m=new THREE.Mesh(geo,mode==='over'?ov:st);m.userData.std=st;m.castShadow=true;m.name=name;buildAdj(m);
-m.position.set(pos?pos.x:(cnt%3-1)*60*(cnt>0),0,pos?pos.z:0);scene.add(m);meshes.push(m);
-const y=pos?pos.y:-geo.boundingBox.min.y;m.position.y=y+40;setSel(m);if(!bulk)refresh();const t0=performance.now();anims.push(n=>{const t=Math.min(1,(n-t0)/450);m.position.y=y+40*(1-bounce(t));fillTf();if(t>=1){rf();return true}return false});return m}
-Object.keys(P).forEach(k=>{const b=document.createElement('button');b.className='b';b.textContent=k;b.onclick=()=>{cnt++;addMesh(weld(P[k](+$('#psz').value||40,Math.max(8,+$('#psg').value||48))),k+' '+cnt)};$('#prims').appendChild(b)});
+const anims=[],bounce=t=>{const n=7.5625,d=2.75;if(t<1/d)return n*t*t;if(t<2/d)return n*(t-=1.5/d)*t+.75;if(t<2.5/d)return n*(t-=2.25/d)*t+.9375;return n*(t-=2.625/d)*t+.984375};
+function addMesh(geo,name,pos,colHex){geo.computeBoundingBox();const st=mkStd(colHex||0xc8cad6),m=new THREE.Mesh(geo,mode==='over'?ov:st);m.userData.std=st;m.castShadow=true;m.name=name;buildAdj(m);
+m.position.set(pos?pos.x:(cnt%3-1)*60*(cnt>0),pos?pos.y:0,pos?pos.z:0);scene.add(m);meshes.push(m);
+const y=pos?pos.y:-geo.boundingBox.min.y;if(!pos)m.position.y=y+40;setSel(m);if(!bulk)refresh();
+if(!pos){const t0=performance.now();anims.push(n=>{const t=Math.min(1,(n-t0)/450);m.position.y=y+40*(1-bounce(t));fillTf();if(t>=1){refresh();return true}return false})}return m}
+Object.keys(P).forEach(k=>{const b=document.createElement('button');b.className='b';b.textContent=k;b.onclick=()=>{cnt++;addMesh(weld(P[k](+$('#psz').value||40,Math.max(8,+$('#psg').value||48))),k+' '+cnt)}};$('#prims').appendChild(b)});
 const TOOLS=['select','translate','rotate','scale'],BR=['clay','smooth','grab','flatten','inflate'];
 const sculpt=()=>BR.includes(tool);
 function mkT(arr,host){arr.forEach(t=>{const b=document.createElement('button');b.className='b';b.dataset.t=t;b.textContent=t;b.onclick=()=>setTool(t);$(host).appendChild(b)})}
@@ -141,7 +143,7 @@ $('#br').oninput=e=>$('#rv').textContent=e.target.value;
 ['#fil','#inf','#sl','#sh'].forEach(s=>$(s).oninput=refresh);$('#fil').onchange=refresh;
 $('#defects').onclick=()=>{showDef=!showDef;meshes.forEach(m=>m.children.forEach(c=>{if(c.userData.def)c.visible=showDef}));$('#defects').classList.toggle('on',showDef)};
 $('#del').onclick=del;function del(){if(!sel)return;tc.detach();scene.remove(sel);meshes=meshes.filter(m=>m!==sel);sel=null;box.visible=false;ol();refresh()}
-$('#dup').onclick=()=>{if(!sel)return;cnt++;const m=addMesh(sel.geometry.clone(),sel.name+' copy',sel.position.clone().add(new THREE.Vector3(30,0,0)));m.rotation.copy(sel.rotation);m.scale.copy(sel.scale);m.userData.std.color.copy(sel.userData.std.color);if(sel.userData.img){m.userData.img=sel.userData.img;m.userData.f={...sel.userData.f};projUV(m);renderImg(m)}fillApp()};
+$('#dup').onclick=()=>{if(!sel)return;cnt++;const m=addMesh(sel.geometry.clone(),sel.name+' copy',sel.position.clone().add(new THREE.Vector3(30,0,0)));m.rotation.copy(sel.rotation);m.scale.copy(sel.scale);m.userData.std.color.copy(sel.userData.std.color);fillApp()};
 $('#fill').onclick=()=>{if(!sel)return;const g=sel.geometry,p=g.attributes.position,ix=Array.from(g.index.array),c=new Map(),ed=[];
 for(let i=0;i<ix.length;i+=3)for(let k=0;k<3;k++){const a=ix[i+k],b=ix[i+(k+1)%3],key=a<b?a+'_'+b:b+'_'+a;c.set(key,(c.get(key)||0)+1);ed.push([a,b,key])}
 const nx=new Map();ed.forEach(([a,b,k])=>{if(c.get(k)===1)nx.set(a,b)});const v=Array.from(p.array),seen=new Set();let loops=0;
@@ -174,202 +176,97 @@ if(tool==='grab'){const {o}=region(h),pl=new THREE.Plane().setFromNormalAndCopla
 cv.addEventListener('pointermove',e=>{if(!stroke||!sel)return;if(tool==='grab'){const r=cv.getBoundingClientRect();nd.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(nd,cam);const pt=new THREE.Vector3();if(!ray.ray.intersectPlane(stroke.pl,pt))return;const d=sel.worldToLocal(pt).sub(stroke.s),p=sel.geometry.attributes.position;stroke.o.forEach(q=>p.setXYZ(q.i,q.p0.x+d.x*q.w,q.p0.y+d.y*q.w,q.p0.z+d.z*q.w));upd()}
 else{const h=pick([sel],e);if(h)brush(h,e.shiftKey)}});
 cv.addEventListener('pointerup',e=>{if(stroke){stroke=null;refresh();return}
-if(swallow||tc.dragging||!dn||Math.hypot(e.clientX-dn.x,e.clientY-dn.y)>4||sculpt()||e.button!==0)return;const h=pick(meshes,e);setSel(h?h.object:null)});
+if(tc.dragging||!dn||Math.hypot(e.clientX-dn.x,e.clientY-dn.y)>4||sculpt()||e.button!==0)return;const h=pick(meshes,e);setSel(h?h.object:null)});
 function doUndo(){const u=undo.pop();if(!u||!meshes.includes(u.m))return;u.m.geometry.attributes.position.array.set(u.p);const s=sel;sel=u.m;upd();sel=s;refresh();log('Undid sculpt stroke')}
 $('#undo').onclick=doUndo;
 addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();doUndo()}else if(e.key==='Delete'||e.key==='Backspace')del();else if(e.key==='g')setTool('translate');else if(e.key==='r')setTool('rotate');else if(e.key==='s')setTool('scale')});
 function rs(){const w=$('#vp').clientWidth,h=$('#vp').clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
 new ResizeObserver(rs).observe($('#vp'));rs();
 
-let drag=null,rz=null,hover=null,swallow=false,imgMode='new';
-const anims=[],bounce=t=>{const n=7.5625,d=2.75;if(t<1/d)return n*t*t;if(t<2/d)return n*(t-=1.5/d)*t+.75;if(t<2.5/d)return n*(t-=2.25/d)*t+.9375;return n*(t-=2.625/d)*t+.984375};
-const AX={x:new THREE.Vector3(1,0,0),y:new THREE.Vector3(0,1,0),z:new THREE.Vector3(0,0,1)};
 const gs=m=>{const s=new THREE.Vector3();m.geometry.boundingBox.getSize(s);return s.multiply(m.scale)};
-function minY(m){m.updateMatrixWorld(true);const p=m.geometry.attributes.position,v=new THREE.Vector3();let y=1e9;for(let i=0;i<p.count;i++){v.fromBufferAttribute(p,i).applyMatrix4(m.matrixWorld);if(v.y<y)y=v.y}return y}
-function facePt(m,a,s){const bb=m.geometry.boundingBox,c=new THREE.Vector3();bb.getCenter(c);c[a]=s>0?bb.max[a]:bb.min[a];return c}
-const HD=[];[['x',1,0xff4d4d],['x',-1,0xff4d4d],['y',1,0x4dff6a],['y',-1,0x4dff6a],['z',1,0x4d8dff],['z',-1,0x4d8dff]].forEach(([a,s,c])=>{const h=new THREE.Mesh(new THREE.SphereGeometry(1,16,12),new THREE.MeshBasicMaterial({color:c,depthTest:false}));h.renderOrder=20;h.visible=false;h.userData={a,s};scene.add(h);HD.push(h)});
 const dmIn=[];['x','y','z'].forEach(a=>{const i=document.createElement('input');i.type='number';i.min=1;i.oninput=()=>{if(!sel||i.value===''||+i.value<=0)return;const s=new THREE.Vector3();sel.geometry.boundingBox.getSize(s);sel.scale[a]=+i.value/(s[a]||1);fillTf();refresh()};dmIn.push([a,i]);$('#dm').appendChild(i)});
 ['#c8cad6','#FF6B00','#00E5FF','#e74c3c','#2ecc71','#f1c40f','#9b59b6','#ff6fb5','#ffffff','#2c3e50'].forEach(c=>{const i=document.createElement('i');i.style.background=c;i.onclick=()=>setCol(c);$('#sw').appendChild(i)});
-function setCol(c){if(!sel)return log('Select an object first');const k=sel.userData.std.color;k.set(c);$('#col').value='#'+k.getHexString()}
+function setCol(c){if(!sel)return log('Select object');const k=sel.userData.std.color;k.set(c);$('#col').value='#'+k.getHexString()}
 $('#col').oninput=e=>setCol(e.target.value);
-function fillApp(){if(!sel)return;$('#col').value='#'+sel.userData.std.color.getHexString();const f=sel.userData.f||{b:100,c:100,h:0,g:0,i:0,t:1};$('#fb').value=f.b;$('#fc').value=f.c;$('#fh').value=f.h;$('#fg').checked=!!f.g;$('#fi').checked=!!f.i;$('#ft').value=f.t}
-function projUV(m){const g=m.geometry,p=g.attributes.position,n=g.attributes.normal,bb=g.boundingBox,s=new THREE.Vector3();bb.getSize(s);const uv=new Float32Array(p.count*2);
-for(let i=0;i<p.count;i++){const ax=Math.abs(n.getX(i)),ay=Math.abs(n.getY(i)),az=Math.abs(n.getZ(i)),x=p.getX(i)-bb.min.x,y=p.getY(i)-bb.min.y,z=p.getZ(i)-bb.min.z;let u,v;
-if(az>=ax&&az>=ay){u=x/(s.x||1);v=y/(s.y||1)}else if(ax>=ay){u=z/(s.z||1);v=y/(s.y||1)}else{u=x/(s.x||1);v=z/(s.z||1)}uv[i*2]=u;uv[i*2+1]=v}
-g.setAttribute('uv',new THREE.BufferAttribute(uv,2))}
-function renderImg(m){const u=m.userData,im=u.img,f=u.f,sc=Math.min(1,1024/Math.max(im.width,im.height)),w=Math.max(1,im.width*sc|0),h=Math.max(1,im.height*sc|0);
-if(!u.cvs){u.cvs=document.createElement('canvas');u.tex=new THREE.CanvasTexture(u.cvs);u.tex.wrapS=u.tex.wrapT=THREE.RepeatWrapping}
-const c=u.cvs;c.width=w;c.height=h;const x=c.getContext('2d');x.filter=`brightness(${f.b}%) contrast(${f.c}%) hue-rotate(${f.h}deg) grayscale(${f.g?100:0}%) invert(${f.i?100:0}%)`;x.drawImage(im,0,0,w,h);
-u.tex.repeat.set(f.t,f.t);u.tex.needsUpdate=true;if(u.std.map!==u.tex){u.std.map=u.tex;u.std.needsUpdate=true}}
-function applyImg(m,im){const u=m.userData;u.img=im;u.f=u.f||{b:100,c:100,h:0,g:0,i:0,t:1};if(!u.std.map)u.std.color.set(0xffffff);projUV(m);renderImg(m);fillApp()}
-['#fb','#fc','#fh','#fg','#fi','#ft'].forEach(q=>$(q).oninput=()=>{if(!sel||!sel.userData.img)return;sel.userData.f={b:+$('#fb').value,c:+$('#fc').value,h:+$('#fh').value,g:$('#fg').checked?1:0,i:$('#fi').checked?1:0,t:+$('#ft').value};renderImg(sel)});
-$('#imgX').onclick=()=>{if(!sel)return;const u=sel.userData;u.img=null;u.std.map=null;u.std.needsUpdate=true;u.std.color.set(0xc8cad6);fillApp()};
-$('#imgNew').onclick=()=>{imgMode='new';$('#file').click()};
-$('#imgSel').onclick=()=>{if(!sel)return log('Select an object first');imgMode='sel';$('#file').click()};
-$('#file').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{
-if(imgMode==='sel'&&sel)applyImg(sel,im);else{cnt++;const w=80,h=Math.min(140,Math.max(10,w*im.height/im.width));applyImg(addMesh(weld(new THREE.BoxGeometry(w,h,3,20,Math.max(2,Math.round(20*h/w)),1)),'Image '+cnt),im)}
-log('Image applied. Tweak it with the sliders')};im.src=r.result};r.readAsDataURL(f)};
-function tw(m,q1){const q0=m.quaternion.clone(),rest=minY(m),t0=performance.now();anims.push(n=>{const t=Math.min(1,(n-t0)/350),e=t*t*(3-2*t);m.quaternion.copy(q0).slerp(q1,e);m.position.y+=rest-minY(m);fillTf();if(t>=1){refresh();return true}return false})}
-function orient(target,lay){if(!sel)return log('Select an object first');const m=sel,s=gs(m),q=m.quaternion;let best='y',bs=-1;
-['x','y','z'].forEach(a=>{const d=AX[a].clone().applyQuaternion(q),sc=s[a]+1e-3*Math.abs(d.dot(target));if(sc>bs){bs=sc;best=a}});
-const d=AX[best].clone().applyQuaternion(q);if(d.dot(target)<0)d.negate();let q1=new THREE.Quaternion().setFromUnitVectors(d,target).multiply(q);
-if(lay){let sh='x',ss=1e9;['x','y','z'].forEach(a=>{if(a!==best&&s[a]<ss){ss=s[a];sh=a}});const d2=AX[sh].clone().applyQuaternion(q1);d2.x=0;if(d2.lengthSq()>1e-6){d2.normalize();q1=new THREE.Quaternion().setFromUnitVectors(d2,new THREE.Vector3(0,d2.y>=0?1:-1,0)).multiply(q1)}}
-tw(m,q1);log(lay?'Laying flat':'Standing up')}
-$('#stand').onclick=()=>orient(new THREE.Vector3(0,1,0),false);$('#lay').onclick=()=>orient(new THREE.Vector3(1,0,0),true);
-document.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{if(!sel)return log('Select an object first');tw(sel,new THREE.Quaternion().setFromAxisAngle(AX[b.dataset.r],Math.PI/2).multiply(sel.quaternion))});
-$('#drop').onclick=()=>{if(!sel)return;const m=sel,y0=m.position.y,dy=-minY(m),t0=performance.now();anims.push(n=>{const t=Math.min(1,(n-t0)/450);m.position.y=y0+dy*bounce(t);fillTf();if(t>=1){refresh();return true}return false})};
-const setRay=e=>{const r=cv.getBoundingClientRect();nd.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(nd,cam)};
-cv.addEventListener('pointerdown',e=>{swallow=false;if(e.button!==0||tool!=='select'||tc.dragging)return;
-const hh=sel&&pick(HD.filter(h=>h.visible),e);
-if(hh){const{a,s}=hh.object.userData;sel.updateMatrixWorld();const opp=facePt(sel,a,-s);rz={a,s,opp,F0:opp.clone().applyMatrix4(sel.matrixWorld),D:AX[a].clone().applyQuaternion(sel.quaternion).multiplyScalar(s).normalize(),sz:sel.geometry.boundingBox.getSize(new THREE.Vector3())[a]};orbit.enabled=false;cv.setPointerCapture(e.pointerId);return}
-const h=pick(meshes,e);if(h){const o=h.object;setSel(o);const gp=new THREE.Plane(new THREE.Vector3(0,1,0),-h.point.y),p0=ray.ray.intersectPlane(gp,new THREE.Vector3())||o.position.clone();drag={o,gp,off:new THREE.Vector3(o.position.x-p0.x,0,o.position.z-p0.z),by:0};orbit.enabled=false;cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing'}},true);
-cv.addEventListener('pointermove',e=>{
-if(rz){setRay(e);const w0=rz.F0.clone().sub(ray.ray.origin),d=ray.ray.direction,b=rz.D.dot(d),den=1-b*b;if(den<1e-4)return;let t=Math.max(2,(b*d.dot(w0)-rz.D.dot(w0))/den);if($('#snap').checked)t=Math.max(5,Math.round(t/5)*5);
-sel.scale[rz.a]=t/rz.sz;sel.position.copy(rz.F0).sub(rz.opp.clone().multiply(sel.scale).applyQuaternion(sel.quaternion));fillTf();log(rz.a.toUpperCase()+': '+t.toFixed(1)+' mm');return}
-if(drag){const o=drag.o;setRay(e);const hit=ray.intersectObjects(meshes.filter(m=>m!==o),false)[0];let x,z,by=0;drag.top=null;
-if(hit&&hit.face&&hit.face.normal.clone().transformDirection(hit.object.matrixWorld).y>.5){x=hit.point.x;z=hit.point.z;by=hit.point.y;drag.top=hit.object}
-else{const p=ray.ray.intersectPlane(drag.gp,new THREE.Vector3());if(!p)return;x=p.x+drag.off.x;z=p.z+drag.off.z}
-if($('#snap').checked){x=Math.round(x/5)*5;z=Math.round(z/5)*5}
-o.position.x=x;o.position.z=z;o.position.y+=by-minY(o);fillTf();return}
-if(hover&&tool!=='select'){hover.userData.std.emissive.setHex(0);hover=null}
-if(!stroke&&tool==='select'){const hh=sel&&pick(HD.filter(h=>h.visible),e);let hv=null;if(hh)cv.style.cursor='nesw-resize';else{const h=pick(meshes,e);hv=h?h.object:null;cv.style.cursor=h?'grab':'default'}
-if(hv!==hover){if(hover)hover.userData.std.emissive.setHex(0);hover=hv;if(hv)hv.userData.std.emissive.setHex(0x1a2a33)}}});
-cv.addEventListener('pointerup',()=>{if(rz||drag){swallow=true;const d=drag;rz=null;drag=null;orbit.enabled=true;cv.style.cursor='grab';refresh();if(d)log(d.top?'Stacked on '+d.top.name:'Placed on the bed')}},true);
+function fillApp(){if(!sel)return;$('#col').value='#'+sel.userData.std.color.getHexString()}
 
-let bulk=false;const rf=()=>{clearTimeout(rf.t);rf.t=setTimeout(refresh,80)};let sampleFn,genN=0,lastParts=null,lastMade=[];
-const cl=$('#cl');
-function msg(t,c){const d=document.createElement('div');d.className='m '+c;d.textContent=t;cl.appendChild(d);cl.scrollTop=cl.scrollHeight;return d}
-msg('Describe or upload an image to build. The AI generates models and applies diagram images directly.','a');
-['a controller stand','a phone stand','a controller stand with small pumpkins'].forEach(t=>{const c=document.createElement('span');c.textContent=t;c.onclick=()=>{$('#ci').value=t;send()};$('#chips').appendChild(c)});
-$('#ch').onclick=()=>$('#chat').classList.toggle('c');
+/* Smart Procedural AI Generator Engine */
+function clearAll(){meshes.slice().forEach(m=>{scene.remove(m);if(m.geometry)m.geometry.dispose()});meshes=[];sel=null;box.visible=false}
 
-let chatImageBase64 = null;
-$('#chatImgBtn').onclick = () => $('#chatImgInput').click();
-$('#chatImgInput').onchange = e => {
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    chatImageBase64 = reader.result;
-    log('Image loaded into AI Chat!');
-    $('#chatImgBtn').style.borderColor = 'var(--ac)';
-  };
-  reader.readAsDataURL(file);
-};
-
-async function getSample(){if(sampleFn!==undefined)return sampleFn;try{sampleFn=(window.claude&&await claude.use('sample'))||null}catch(e){sampleFn=null}return sampleFn}
-const SYS=`You are a senior industrial designer making DETAILED, realistic, 3D-printable product models out of primitives for a CAD viewer. Units are mm. Y is up, the bed is y=0, x is left/right, z is depth, the front of the object faces +z. Center the model at x=0, z=0 and keep it within about 180 x 140 x 180 mm. A part's "pos" is its CENTER; "size" is its full [x,y,z] extent.
-Return ONLY JSON: {"reply":"one short friendly sentence","mode":"new"|"replace","parts":[{"name":"short name","shape":"box|cylinder|sphere|cone|torus|wedge|hex","size":[x,y,z],"pos":[x,y,z],"rot":[rx,ry,rz degrees],"color":"#rrggbb"}]}
-SHAPES: wedge = right-triangle prism; hex = 6-sided cylinder; cylinder/sphere/cone/torus as usual.
-Use 22 to 40 parts with realistic functional details. Mode "replace" if modifying, "new" otherwise.`;
-
-function buildParts(parts){const g=genN++,ox=g?120*(g%2?1:-1)*Math.ceil(g/2):0,made=[];
-const mk={box:()=>new THREE.BoxGeometry(1,1,1,2,2,2),cylinder:()=>new THREE.CylinderGeometry(.5,.5,1,32,2),sphere:()=>new THREE.SphereGeometry(.5,32,20),cone:()=>new THREE.CylinderGeometry(0,.5,1,32,2),hex:()=>new THREE.CylinderGeometry(.5,.5,1,6,1),wedge:()=>{const h=new THREE.Shape();h.moveTo(-.5,-.5);h.lineTo(.5,-.5);h.lineTo(-.5,.5);h.closePath();const g=new THREE.ExtrudeGeometry(h,{depth:1,bevelEnabled:false});g.translate(0,0,-.5);return g},torus:()=>new THREE.TorusGeometry(.35,.15,16,32)};
-const c=v=>Math.max(-150,Math.min(150,+v||0)),sz=v=>Math.max(.5,Math.min(200,+v||10)),rd=v=>(+v||0)*Math.PI/180;
-parts.slice(0,48).forEach(p=>{const z=p.size||[10,10,10],q=p.pos||[0,0,0],r=p.rot||[0,0,0],geo=(mk[p.shape]||mk.box)();geo.scale(sz(z[0]),sz(z[1]),sz(z[2]));cnt++;
-bulk=true;const m=addMesh(weld(geo),String(p.name||p.shape||'part').slice(0,24),{x:ox+c(q[0]),y:Math.max(0,+q[1]||0),z:c(q[2])});
-m.rotation.set(rd(r[0]),rd(r[1]),rd(r[2]));if(/^#[0-9a-f]{6}$/i.test(p.color||''))m.userData.std.color.set(p.color);m.userData.shape=p.shape;made.push(m)});return made}
-
-async function send(){
-  const inp=$('#ci'),t=inp.value.trim();
-  if(!t && !chatImageBase64) return;
-  inp.value='';
-  const userMsg = msg(t || 'Processing uploaded image...', 'u');
+function buildTree(){
+  clearAll();bulk=true;
+  const trunk=addMesh(weld(new THREE.CylinderGeometry(5,7,24,16)),"Trunk",new THREE.Vector3(0,12,0),0x5c4033);
+  const t1=addMesh(weld(new THREE.ConeGeometry(32,32,16)),"Foliage Tier 1",new THREE.Vector3(0,36,0),0x0f5257);
+  const t2=addMesh(weld(new THREE.ConeGeometry(25,28,16)),"Foliage Tier 2",new THREE.Vector3(0,54,0),0x0b6623);
+  const t3=addMesh(weld(new THREE.ConeGeometry(18,22,16)),"Foliage Tier 3",new THREE.Vector3(0,70,0),0x299617);
+  const star=addMesh(weld(new THREE.DodecahedronGeometry(5,0)),"Star",new THREE.Vector3(0,84,0),0xffd700);
   
-  if(chatImageBase64) {
-    const userImgPreview = new Image();
-    userImgPreview.className = 'fig';
-    userImgPreview.src = chatImageBase64;
-    userMsg.appendChild(userImgPreview);
+  const colors=[0xff0000,0x00e5ff,0xffd700,0xff007f,0xffffff];
+  for(let i=0;i<18;i++){
+    const h=28+Math.random()*40,r=(1-(h-24)/60)*24,ang=(i/18)*Math.PI*2;
+    addMesh(weld(new THREE.SphereGeometry(2.5,10,10)),`Ornament ${i+1}`,new THREE.Vector3(Math.cos(ang)*r,h,Math.sin(ang)*r),colors[i%colors.length]);
   }
-
-  const sm=await getSample();
-  const w=msg('Designing model & preparing visual diagram…','a');
-  $('#cs').disabled=true;
-
-  try {
-    let r = null;
-    if(sm) {
-      const prev=lastParts?'\nCURRENT MODEL parts JSON:\n'+JSON.stringify(lastParts):'';
-      r = await sm.json(SYS+prev+'\n\nUser request: '+t, {cache:false, modelTier:'complex'});
-    } else {
-      r = {
-        reply: "Generated 3D construct along with diagram visualization plate.",
-        mode: "new",
-        parts: [
-          {name:"Base Plate", shape:"box", size:[100,6,80], pos:[0,3,0], color:"#2a2a35"},
-          {name:"Back Frame", shape:"box", size:[100,90,6], pos:[0,48,-37], color:"#1a1a24"},
-          {name:"Left Support", shape:"wedge", size:[12,40,40], pos:[-42,20,0], color:"#ff6b00"},
-          {name:"Right Support", shape:"wedge", size:[12,40,40], pos:[42,20,0], color:"#ff6b00"}
-        ]
-      };
-    }
-
-    const parts=Array.isArray(r.parts)?r.parts:[];
-    if(r.mode==='replace'&&lastMade.length){
-      lastMade.forEach(m=>scene.remove(m));
-      meshes=meshes.filter(m=>!lastMade.includes(m));
-      sel=null;tc.detach();box.visible=false;genN--;
-    }
-    lastMade=buildParts(parts);lastParts=parts;
-    w.textContent=(r.reply||'Done')+' ('+lastMade.length+' parts).';
-    const mm=lastMade;bulk=false;refresh();
-
-    if(chatImageBase64) {
-      const activeImg = new Image();
-      activeImg.onload = () => {
-        cnt++;
-        const w=80, h=Math.min(140, Math.max(10, w * activeImg.height / activeImg.width));
-        const plate = addMesh(weld(new THREE.BoxGeometry(w, h, 3)), 'Diagram Image ' + cnt, {x:0, y:h/2+5, z:10});
-        applyImg(plate, activeImg);
-        log('Uploaded image mapped to diagram plate on stage!');
-        chatImageBase64 = null;
-        $('#chatImgBtn').style.borderColor = 'var(--bd)';
-      };
-      activeImg.src = chatImageBase64;
-    }
-
-    setTimeout(()=>frame(mm),600);
-    setTimeout(()=>addFigs(mm),1000);
-  } catch(e) {
-    w.textContent='Could not complete generation. Rephrasing prompt...';
-  }
-  $('#cs').disabled=false;
-  cl.scrollTop=cl.scrollHeight;
+  bulk=false;setSel(trunk);refresh();log("Built Christmas Tree");
 }
 
-$('#cs').onclick=send;$('#ci').onkeydown=e=>{if(e.key==='Enter')send()};
+function buildSnowman(){
+  clearAll();bulk=true;
+  const b1=addMesh(weld(new THREE.SphereGeometry(22,24,24)),"Base Ball",new THREE.Vector3(0,22,0),0xf0f4f8);
+  const b2=addMesh(weld(new THREE.SphereGeometry(16,24,24)),"Mid Ball",new THREE.Vector3(0,52,0),0xf0f4f8);
+  const b3=addMesh(weld(new THREE.SphereGeometry(11,24,24)),"Head Ball",new THREE.Vector3(0,74,0),0xf0f4f8);
+  const nose=addMesh(weld(new THREE.ConeGeometry(2.5,12,12)),"Carrot Nose",new THREE.Vector3(0,74,12),0xff6b00);
+  nose.rotation.x=Math.PI/2;
+  const hat=addMesh(weld(new THREE.CylinderGeometry(12,12,2,16)),"Hat Brim",new THREE.Vector3(0,83,0),0x111111);
+  const hatTop=addMesh(weld(new THREE.CylinderGeometry(8,8,12,16)),"Hat Top",new THREE.Vector3(0,90,0),0x111111);
+  bulk=false;setSel(b1);refresh();log("Built Snowman");
+}
 
-const lb=$('#lb');lb.onclick=()=>lb.style.display='none';
-function zoom(el){lb.innerHTML='';const c=el.cloneNode(true);c.style.cssText='width:min(92%,900px);height:auto;max-height:92%;border-radius:8px;cursor:zoom-out';lb.appendChild(c);lb.style.display='flex'}
-function snapshot(made){const B=new THREE.Box3();made.forEach(m=>B.union(new THREE.Box3().setFromObject(m)));const c=B.getCenter(new THREE.Vector3()),r=B.getSize(new THREE.Vector3()).length()/2||20;
-const hid=[...meshes.filter(m=>!made.includes(m)),...HD,box,tc,cutPl],was=hid.map(o=>o.visible);hid.forEach(o=>o.visible=false);
-const p0=cam.position.clone(),q0=cam.quaternion.clone(),ar=cam.aspect;
-const dist=r*2.7*(ar<1?1/ar:1);cam.position.copy(c).add(new THREE.Vector3(1,.8,1.2).normalize().multiplyScalar(dist));cam.lookAt(c);cam.updateMatrixWorld();
-R.render(scene,cam);const o=document.createElement('canvas');o.width=640;o.height=Math.round(640*cv.height/cv.width);o.getContext('2d').drawImage(cv,0,0,o.width,o.height);const url=o.toDataURL('image/jpeg',.9);
-cam.position.copy(p0);cam.quaternion.copy(q0);cam.updateMatrixWorld();hid.forEach((x,i)=>x.visible=was[i]);R.render(scene,cam);return url}
-function diagram(made){const bx=made.map(m=>({b:new THREE.Box3().setFromObject(m),m})),B=new THREE.Box3();bx.forEach(o=>B.union(o.b));
-const W=B.max.x-B.min.x||1,H=B.max.y||1,D=B.max.z-B.min.z||1,k=Math.min(240/W,105/H,105/D),x0=30+(240-W*k)/2,gy=130,ty=165;let a='',t='';
-bx.forEach((o,i)=>{const b=o.b,sh=o.m.userData.shape,c='#'+o.m.userData.std.color.getHexString(),x=x0+(b.min.x-B.min.x)*k,w=(b.max.x-b.min.x)*k,fy=gy-b.max.y*k,fh=(b.max.y-b.min.y)*k,zy=ty+(b.min.z-B.min.z)*k,zh=(b.max.z-b.min.z)*k;
-const st=`fill="${c}" fill-opacity=".85" stroke="#fff" stroke-width=".8"`,tx=(cx,cy)=>`<text x="${cx}" y="${cy+3}" text-anchor="middle" font-size="8" fill="#fff" stroke="#000" stroke-width=".4" paint-order="stroke">${i+1}</text>`;
-a+=(sh==='sphere'?`<ellipse cx="${x+w/2}" cy="${fy+fh/2}" rx="${w/2}" ry="${fh/2}" ${st}/>`:sh==='cone'?`<polygon points="${x+w/2},${fy} ${x},${fy+fh} ${x+w},${fy+fh}" ${st}/>`:`<rect x="${x}" y="${fy}" width="${w}" height="${fh}" rx="${sh==='cylinder'||sh==='torus'?2:0}" ${st}/>`)+tx(x+w/2,fy+fh/2);
-t+=(sh==='box'||sh==='wedge'?`<rect x="${x}" y="${zy}" width="${w}" height="${zh}" ${st}/>`:`<ellipse cx="${x+w/2}" cy="${zy+zh/2}" rx="${w/2}" ry="${zh/2}" ${st}/>`)+tx(x+w/2,zy+zh/2)});
-const L=(x1,y1,x2,y2)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#00E5FF" stroke-width=".8"/>`,T=(x,y,s,an)=>`<text x="${x}" y="${y}" font-size="8" fill="#00E5FF" text-anchor="${an||'start'}">${s}</text>`,xr=x0+W*k;
-const H2=ty+D*k+26;
-return `<svg class="fig" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 ${H2}"><rect width="320" height="${H2}" fill="#16161a"/><text x="8" y="14" font-size="9" fill="#FF6B00">FRONT</text><text x="8" y="${ty-8}" font-size="9" fill="#FF6B00">TOP</text>
-<line x1="20" y1="${gy}" x2="300" y2="${gy}" stroke="#555" stroke-dasharray="3"/>${a}${t}
-${L(x0,gy+9,xr,gy+9)}${T((x0+xr)/2,gy+19,W.toFixed(0)+' mm','middle')}${L(xr+8,gy,xr+8,gy-H*k)}${T(xr+12,gy-H*k/2+3,H.toFixed(0)+' mm')}${L(xr+8,ty,xr+8,ty+D*k)}${T(xr+12,ty+D*k/2+3,D.toFixed(0)+' mm')}</svg>`}
-function addFigs(made){made=made.filter(m=>meshes.includes(m));if(!made.length)return;const d=msg('','a');d.style.cssText+='width:100%;max-width:100%';
-const cap=t=>{const e=document.createElement('div');e.className='cap';e.textContent=t;d.appendChild(e)};
-cap('Picture');const im=new Image();im.className='fig';im.src=snapshot(made);im.onclick=()=>zoom(im);d.appendChild(im);
-cap('Diagram (mm)');const h=document.createElement('div');h.innerHTML=diagram(made);const sv=h.firstChild;sv.onclick=()=>zoom(sv);d.appendChild(sv);
-const lg=document.createElement('div');lg.style.cssText='font-size:10px;color:var(--mu)';lg.textContent=made.map((m,i)=>(i+1)+' '+m.name).join(' · ');d.appendChild(lg);cl.scrollTop=cl.scrollHeight}
+function buildHouse(){
+  clearAll();bulk=true;
+  const body=addMesh(weld(new THREE.BoxGeometry(40,30,40)),"House Base",new THREE.Vector3(0,15,0),0xdfd3c3);
+  const roof=addMesh(weld(new THREE.ConeGeometry(34,22,4)),"Roof",new THREE.Vector3(0,41,0),0xa03c3c);
+  roof.rotation.y=Math.PI/4;
+  const door=addMesh(weld(new THREE.BoxGeometry(8,16,2)),"Door",new THREE.Vector3(0,8,20),0x5c4033);
+  bulk=false;setSel(body);refresh();log("Built House");
+}
 
-$('#tL').onclick=()=>$('#app').classList.toggle('hl');$('#tR').onclick=()=>$('#app').classList.toggle('hr');
-function frame(made){made=made.filter(m=>meshes.includes(m));if(!made.length)return;const B=new THREE.Box3();made.forEach(m=>B.union(new THREE.Box3().setFromObject(m)));const c=B.getCenter(new THREE.Vector3()),r=B.getSize(new THREE.Vector3()).length()/2||20,ar=cam.aspect,dist=r*2.8*(ar<1?1/ar:1);
-const p1=c.clone().add(new THREE.Vector3(1,.8,1.2).normalize().multiplyScalar(dist)),p0=cam.position.clone(),t0v=orbit.target.clone(),st=performance.now();
-anims.push(n=>{const t=Math.min(1,(n-st)/500),e=t*t*(3-2*t);cam.position.lerpVectors(p0,p1,e);orbit.target.lerpVectors(t0v,c,e);return t>=1})}
-let fr=0,lt=performance.now();
-(function loop(){requestAnimationFrame(loop);orbit.update();const nw=performance.now();for(let i=anims.length-1;i>=0;i--)if(anims[i](nw))anims.splice(i,1);const on=!!sel&&tool==='select'&&!drag;HD.forEach(h=>{h.visible=on;if(on){sel.updateMatrixWorld();h.position.copy(facePt(sel,h.userData.a,h.userData.s)).applyMatrix4(sel.matrixWorld);h.scale.setScalar(cam.position.distanceTo(h.position)*.012)}});if(sel&&box.visible)box.setFromObject(sel);R.render(scene,cam);fr++;const n=performance.now();if(n-lt>500){let tr=0;meshes.forEach(m=>tr+=m.geometry.index.count/3);$('#hud').innerHTML='FPS '+Math.round(fr*1000/(n-lt))+'<br>Tris '+tr+'<br>Units: mm';fr=0;lt=n}})();
-setTool('select');refresh();
+function processAIChat(prompt){
+  const p=prompt.toLowerCase();
+  if(p.includes('tree')||p.includes('christmas')) buildTree();
+  else if(p.includes('snowman')) buildSnowman();
+  else if(p.includes('house')||p.includes('building')) buildHouse();
+  else {
+    clearAll();
+    const m=addMesh(weld(new THREE.BoxGeometry(30,30,30)),"AI Object",new THREE.Vector3(0,15,0),0x00e5ff);
+    refresh();log("Built Custom Model");
+  }
+}
+
+function addMessage(txt,type){
+  const cl=$('#cl'),d=document.createElement('div');
+  d.className='m '+(type==='u'?'u':'a');d.textContent=txt;
+  cl.appendChild(d);cl.scrollTop=cl.scrollHeight;
+}
+
+$('#cs').onclick=()=>{
+  const inp=$('#ci'),val=inp.value.trim();if(!val)return;
+  addMessage(val,'u');inp.value='';
+  setTimeout(()=>{
+    processAIChat(val);
+    addMessage(`Generated 3D construct for "${val}"`,'a');
+  },300);
+};
+
+$('#ci').onkeydown=e=>{if(e.key==='Enter')$('#cs').click()};
+$('#ch').onclick=()=>$('#chat').classList.toggle('c');
+
+/* Quick Prompt Chips */
+['Christmas tree','Snowman','House','Cube'].forEach(label=>{
+  const s=document.createElement('span');s.textContent=label;
+  s.onclick=()=>{ $('#ci').value=label;$('#cs').click(); };
+  $('#chips').appendChild(s);
+});
+
+/* Loop */
+function render(n){requestAnimationFrame(render);for(let i=anims.length-1;i>=0;i--)if(anims[i](n))anims.splice(i,1);R.render(scene,cam)}render(0);
 </script></body></html>
