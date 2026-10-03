@@ -1,0 +1,14 @@
+# 3D AI Imagery
+
+A project for generating and processing 3D AI imagery.
+
+## 🚀 Features
+- Interactive 3D rendering scripts
+- AI-driven imagery generation
+
+## 📁 Repository Structure
+- `gemini-code-1791069267292.html` - Main HTML viewer
+- `gemini-code-1791069249490.js` - Core JavaScript logic
+
+## 🛠️️ Usage
+Open any of the `.html` files in a browser to run the application locally.
